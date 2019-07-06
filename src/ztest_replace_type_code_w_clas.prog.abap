@@ -1,20 +1,64 @@
 REPORT ztest_replace_type_code_w_clas.
 
+CLASS lcl_blood_group DEFINITION
+      CREATE PRIVATE.
+PUBLIC SECTION.
+  CLASS-DATA: co_o  TYPE REF TO lcl_blood_group READ-ONLY,
+              co_a  TYPE REF TO lcl_blood_group READ-ONLY,
+              co_b  TYPE REF TO lcl_blood_group READ-ONLY,
+              co_ab TYPE REF TO lcl_blood_group READ-ONLY.
+
+  CLASS-METHODS:
+    class_constructor.
+
+PRIVATE SECTION.
+  DATA: _code TYPE i.
+  CLASS-DATA: _values TYPE STANDARD TABLE OF REF TO lcl_blood_group WITH KEY table_line.
+
+  class-methods:
+    code IMPORTING i_arg        TYPE i
+           RETURNING VALUE(r_obj) TYPE REF TO lcl_blood_group.
+  METHODS:
+    constructor IMPORTING i_code TYPE i,
+      get_code RETURNING VALUE(r_code) TYPE i.
+ENDCLASS.
+
+CLASS lcl_blood_group IMPLEMENTATION.
+  METHOD constructor.
+    _code = i_code.
+  ENDMETHOD.
+
+  METHOD get_code.
+    r_code = _code.
+  ENDMETHOD.
+
+  METHOD code.
+    read table _values index i_arg ASSIGNING FIELD-SYMBOL(<value>).
+    if ( sy-subrc = 0 ).
+      r_obj = <value>.
+    endif.
+  ENDMETHOD.
+
+  METHOD class_constructor.
+    co_o = NEW #( 0 ).
+    APPEND co_o TO _values.
+    co_a = NEW #( 1 ).
+    APPEND co_a TO _values.
+    co_b = NEW #( 2 ).
+    APPEND co_b TO _values.
+    co_ab = NEW #( 3 ).
+    APPEND co_ab TO _values.
+  ENDMETHOD.
+ENDCLASS.
+
 class lcl_person DEFINITION.
   PUBLIC SECTION.
-    CONSTANTS:
-      co_o  TYPE i VALUE 0,
-      co_a  TYPE i VALUE 1,
-      co_b  TYPE i VALUE 2,
-      co_ab TYPE i VALUE 3.
-
-      methods:
-      constructor IMPORTING i_blood_group type i,
-      set_blood_group IMPORTING i_arg type i,
-      get_blood_group RETURNING VALUE(r_result) type i.
+    METHODS:
+      constructor IMPORTING i_blood_group TYPE ref to lcl_blood_group,
+      set_blood_group IMPORTING i_arg TYPE ref to lcl_blood_group.
 
 private section.
-  data: blood_group type i.
+  data: blood_group type ref to lcl_blood_group.
 endclass.
 
 CLASS lcl_person IMPLEMENTATION.
@@ -24,10 +68,6 @@ CLASS lcl_person IMPLEMENTATION.
 
   METHOD set_blood_group.
     blood_group = i_arg.
-  ENDMETHOD.
-
-  METHOD get_blood_group.
-    r_result = blood_group.
   ENDMETHOD.
 ENDCLASS.
 
@@ -43,8 +83,8 @@ CLASS lcl_app IMPLEMENTATION.
           person2 TYPE REF TO lcl_person,
           person3 type ref to lcl_person.
 
-    person1 = NEW #( i_blood_group = 1 ).
-    person2 = NEW #( i_blood_group = lcl_person=>co_ab ).
-    person3 = NEW #( i_blood_group = 4 ). " Unexpected value is applicable.
+    person1 = NEW #( i_blood_group = lcl_blood_group=>co_o ).
+    person2 = NEW #( i_blood_group = lcl_blood_group=>co_ab ).
+*    person3 = NEW #( i_blood_group = new #( 4 ) ). " Unexpected value is not applicable.
   ENDMETHOD.
 ENDCLASS.
