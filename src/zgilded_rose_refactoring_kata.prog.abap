@@ -82,13 +82,11 @@ CLASS lcl_item DEFINITION FINAL.
 ENDCLASS.
 
 CLASS lcl_gilded_rose IMPLEMENTATION.
-
   METHOD constructor.
     mt_items = it_items.
   ENDMETHOD.
 
   METHOD update_quality.
-
     LOOP AT mt_items INTO DATA(lo_item).
       IF lo_item->mv_name <> |Aged Brie| AND
          lo_item->mv_name <> |Backstage passes to a TAFKAL80ETC concert|.
@@ -139,13 +137,10 @@ CLASS lcl_gilded_rose IMPLEMENTATION.
         ENDIF.
       ENDIF.
     ENDLOOP.
-
   ENDMETHOD.
-
 ENDCLASS.
 
 CLASS lcl_item IMPLEMENTATION.
-
   METHOD constructor.
     mv_name    = iv_name.
     mv_sell_in = iv_sell_in.
@@ -155,7 +150,6 @@ CLASS lcl_item IMPLEMENTATION.
   METHOD description.
     rv_string = |{ mv_name }, { mv_sell_in }, { mv_quality }|.
   ENDMETHOD.
-
 ENDCLASS.
 
 
@@ -215,7 +209,6 @@ CLASS lth_texttest_fixture IMPLEMENTATION.
   ENDMETHOD.
 ENDCLASS.
 
-
 *& Test Code - Currently Broken
 CLASS ltc_gilded_rose DEFINITION FINAL FOR TESTING RISK LEVEL HARMLESS.
   PRIVATE SECTION.
@@ -224,7 +217,6 @@ CLASS ltc_gilded_rose DEFINITION FINAL FOR TESTING RISK LEVEL HARMLESS.
 ENDCLASS.
 
 CLASS ltc_gilded_rose IMPLEMENTATION.
-
   METHOD foo.
     DATA(lt_items) = VALUE lcl_gilded_rose=>tt_items( ( NEW #( iv_name    = |foo|
                                                                iv_sell_in = 0
@@ -237,5 +229,4 @@ CLASS ltc_gilded_rose IMPLEMENTATION.
                    act = CAST lcl_item( lt_items[ 1 ] )->mv_name
                    exp = |fixme| ).
   ENDMETHOD.
-
 ENDCLASS.
