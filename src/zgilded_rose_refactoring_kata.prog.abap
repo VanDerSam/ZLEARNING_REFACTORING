@@ -94,6 +94,9 @@ CLASS lcl_gilded_rose IMPLEMENTATION.
           IF lo_item->mv_name <> |Sulfuras, Hand of Ragnaros|.
             lo_item->mv_quality = lo_item->mv_quality - 1.
           ENDIF.
+          IF lo_item->mv_name = |Conjured Mana Cake|.
+            lo_item->mv_quality = lo_item->mv_quality - 1.
+          ENDIF.
         ENDIF.
       ELSE.
         IF lo_item->mv_quality < 50.
@@ -213,20 +216,110 @@ ENDCLASS.
 CLASS ltc_gilded_rose DEFINITION FINAL FOR TESTING RISK LEVEL HARMLESS.
   PRIVATE SECTION.
     METHODS:
-      foo FOR TESTING.
+      equals IMPORTING
+                       i_item_1        TYPE REF TO lcl_item
+                       i_item_2        TYPE REF TO lcl_item
+             RETURNING VALUE(r_result) TYPE abap_bool,
+
+      test_update_quality FOR TESTING. " DDT test/Parameterized test
 ENDCLASS.
 
 CLASS ltc_gilded_rose IMPLEMENTATION.
-  METHOD foo.
-    DATA(lt_items) = VALUE lcl_gilded_rose=>tt_items( ( NEW #( iv_name    = |foo|
-                                                               iv_sell_in = 0
-                                                               iv_quality = 0 ) ) ).
+  METHOD equals.
+    IF i_item_1->mv_name = i_item_2->mv_name AND i_item_1->mv_sell_in = i_item_2->mv_sell_in AND i_item_1->mv_quality = i_item_2->mv_quality.
+      r_result = abap_true.
+    ENDIF.
+  ENDMETHOD.
 
-    DATA(lo_app) = NEW lcl_gilded_rose( it_items = lt_items ).
-    lo_app->update_quality( ).
+  METHOD test_update_quality.
+    TYPES: BEGIN OF test_data_per_test_t,
+             test_id          TYPE string,
+             item_before      TYPE REF TO lcl_item,
+             days_to_simulate TYPE i,
+             item_after       TYPE REF TO lcl_item,
+           END OF   test_data_per_test_t,
 
-    cl_abap_unit_assert=>assert_equals(
-                   act = CAST lcl_item( lt_items[ 1 ] )->mv_name
-                   exp = |fixme| ).
+           test_data_t TYPE STANDARD TABLE OF test_data_per_test_t WITH DEFAULT KEY.
+
+    DATA: test_data TYPE test_data_t,
+          items     TYPE lcl_gilded_rose=>tt_items.
+
+    test_data = VALUE #( ( test_id = `NormalItemDecreasedBy1`
+                           item_before = NEW #( iv_name = `Test item` iv_sell_in = 10 iv_quality = 10 )
+                           days_to_simulate = 1
+                           item_after = NEW #( iv_name = `Test item` iv_sell_in = 9 iv_quality = 9 ) )
+                         ( test_id = `NormalItemWithSellin0DecreasedBy2`
+                           item_before = NEW #( iv_name = `Test item` iv_sell_in = 0 iv_quality = 10 )
+                           days_to_simulate = 1
+                           item_after = NEW #( iv_name = `Test item` iv_sell_in = -1 iv_quality = 8 ) )
+                         ( test_id = `QualityOfItemIsNeverNegative`
+                           item_before = NEW #( iv_name = `Test item` iv_sell_in = 10 iv_quality = 3 )
+                           days_to_simulate = 5
+                           item_after = NEW #( iv_name = `Test item` iv_sell_in = 5 iv_quality = 0 ) )
+                         ( test_id = `AgedBrieItemIncreasesQuality`
+                           item_before = NEW #( iv_name = `Aged Brie` iv_sell_in = 3 iv_quality = 0 )
+                           days_to_simulate = 3
+                           item_after = NEW #( iv_name = `Aged Brie` iv_sell_in = 0 iv_quality = 3 ) )
+                         ( test_id = `AgedBrieItemWithSellin0IncreasesBy2`
+                           item_before = NEW #( iv_name = `Aged Brie` iv_sell_in = 3 iv_quality = 0 )
+                           days_to_simulate = 5
+                           item_after = NEW #( iv_name = `Aged Brie` iv_sell_in = -2 iv_quality = 7 ) )
+                         ( test_id = `QualityOfItemIsNeverMoreThan50_1`
+                           item_before = NEW #( iv_name = `Aged Brie` iv_sell_in = 5 iv_quality = 50 )
+                           days_to_simulate = 5
+                           item_after = NEW #( iv_name = `Aged Brie` iv_sell_in = 0 iv_quality = 50 ) )
+                         ( test_id = `QualityOfItemIsNeverMoreThan50_2`
+                           item_before = NEW #( iv_name = `Aged Brie` iv_sell_in = 5 iv_quality = 47 )
+                           days_to_simulate = 5
+                           item_after = NEW #( iv_name = `Aged Brie` iv_sell_in = 0 iv_quality = 50 ) )
+                         ( test_id = `SulfurasItemHasConstantQuality`
+                           item_before = NEW #( iv_name = `Sulfuras, Hand of Ragnaros` iv_sell_in = 5 iv_quality = 60 )
+                           days_to_simulate = 5
+                           item_after = NEW #( iv_name = `Sulfuras, Hand of Ragnaros` iv_sell_in = 5 iv_quality = 60 ) )
+                         ( test_id = `BackstagePassesItemIncreasesBy1`
+                           item_before = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 12 iv_quality = 10 )
+                           days_to_simulate = 2
+                           item_after = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 10 iv_quality = 12 ) )
+                         ( test_id = `BackstagePassesItemIncreasesBy2WhenSellin<=10`
+                           item_before = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 10 iv_quality = 10 )
+                           days_to_simulate = 2
+                           item_after = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 8 iv_quality = 14 ) )
+                         ( test_id = `BackstagePassesItemIncreasesBy3WhenSellin<=5`
+                           item_before = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 5 iv_quality = 10 )
+                           days_to_simulate = 2
+                           item_after = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 3 iv_quality = 16 ) )
+                         ( test_id = `BackstagePassesItemDropsQualityTo0WhenSellin<0`
+                           item_before = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = 2 iv_quality = 0 )
+                           days_to_simulate = 3
+                           item_after = NEW #( iv_name = `Backstage passes to a TAFKAL80ETC concert` iv_sell_in = -1 iv_quality = 0 ) )
+                         " A new requirement/feature
+                         ( test_id = `ConjuredDegradeBy2`
+                           item_before = NEW #( iv_name = `Conjured Mana Cake` iv_sell_in = 2 iv_quality = 10 )
+                           days_to_simulate = 2
+                           item_after = NEW #( iv_name = `Conjured Mana Cake` iv_sell_in = 0 iv_quality = 6 ) )
+                         ( test_id = `ConjuredHasQuality>0`
+                           item_before = NEW #( iv_name = `Conjured Mana Cake` iv_sell_in = 0 iv_quality = 0 )
+                           days_to_simulate = 2
+                           item_after = NEW #( iv_name = `Conjured Mana Cake` iv_sell_in = -2 iv_quality = 0 ) )
+                       ).
+
+    LOOP AT test_data ASSIGNING FIELD-SYMBOL(<test_data_per_test>).
+      CLEAR items.
+      INSERT <test_data_per_test>-item_before INTO TABLE items.
+
+      DATA(inn) = NEW lcl_gilded_rose( it_items = items ).
+
+      DO <test_data_per_test>-days_to_simulate TIMES.
+        inn->update_quality( ).
+      ENDDO.
+
+      cl_abap_unit_assert=>assert_equals( exp = abap_true
+                                          act = equals( i_item_1 = <test_data_per_test>-item_after
+                                                        i_item_2 = items[ 1 ] )
+                                          msg = |Test = { <test_data_per_test>-test_id }| ).
+    ENDLOOP.
   ENDMETHOD.
 ENDCLASS.
+
+START-OF-SELECTION.
+  lth_texttest_fixture=>main( ).
