@@ -50,22 +50,6 @@ REPORT zgilded_rose_refactoring_kata.
 *& is 80 and it never alters.
 
 *& Production Code - Class Library
-CLASS lcl_item DEFINITION DEFERRED.
-
-CLASS lcl_gilded_rose DEFINITION FINAL.
-  PUBLIC SECTION.
-    TYPES:
-      tt_items TYPE STANDARD TABLE OF REF TO lcl_item WITH EMPTY KEY.
-    METHODS:
-      constructor
-        IMPORTING it_items TYPE tt_items,
-      update_quality.
-
-  PRIVATE SECTION.
-    DATA:
-      mt_items TYPE tt_items.
-ENDCLASS.
-
 CLASS lcl_item DEFINITION FINAL.
   PUBLIC SECTION.
     METHODS:
@@ -81,64 +65,173 @@ CLASS lcl_item DEFINITION FINAL.
       mv_quality TYPE i.
 ENDCLASS.
 
+CLASS lcl_item_controller DEFINITION ABSTRACT.
+  PUBLIC SECTION.
+    METHODS:
+      update IMPORTING i_item TYPE REF TO lcl_item.
+
+  PROTECTED SECTION.
+    DATA: item TYPE REF TO lcl_item.
+
+    METHODS:
+      increase_quality,
+      decrease_quality,
+      decrease_sellin.
+ENDCLASS.
+
+CLASS lcl_item_controller IMPLEMENTATION.
+  METHOD update.
+    item = i_item.
+  ENDMETHOD.
+
+  METHOD increase_quality.
+    IF item->mv_quality < 50.
+      item->mv_quality = item->mv_quality + 1.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD decrease_quality.
+    IF item->mv_quality > 0.
+      item->mv_quality = item->mv_quality - 1.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD decrease_sellin.
+    item->mv_sell_in = item->mv_sell_in - 1.
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_normal DEFINITION INHERITING FROM lcl_item_controller.
+  PUBLIC SECTION.
+    METHODS: update REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_item_controller_normal IMPLEMENTATION.
+  METHOD update.
+    super->update( i_item ).
+    decrease_quality( ).
+    IF item->mv_sell_in <= 0.
+      decrease_quality( ).
+    ENDIF.
+    decrease_sellin( ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_agedbrie DEFINITION INHERITING FROM lcl_item_controller.
+  PUBLIC SECTION.
+    METHODS: update REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_item_controller_agedbrie IMPLEMENTATION.
+  METHOD update.
+    super->update( i_item ).
+    increase_quality( ).
+    IF item->mv_sell_in <= 0.
+      increase_quality( ).
+    ENDIF.
+    decrease_sellin( ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_sulfuras DEFINITION INHERITING FROM lcl_item_controller.
+  PUBLIC SECTION.
+    METHODS: update REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_item_controller_sulfuras IMPLEMENTATION.
+  METHOD update.
+    super->update( i_item ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_backstage DEFINITION INHERITING FROM lcl_item_controller.
+  PUBLIC SECTION.
+    METHODS: update REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_item_controller_backstage IMPLEMENTATION.
+  METHOD update.
+    super->update( i_item ).
+    IF i_item->mv_sell_in <= 0.
+      i_item->mv_quality = 0.
+    ELSE.
+      increase_quality( ).
+      IF i_item->mv_sell_in <= 5.
+        increase_quality( ).
+        increase_quality( ).
+      ELSEIF i_item->mv_sell_in <= 10.
+        increase_quality( ).
+      ENDIF.
+    ENDIF.
+    decrease_sellin( ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_conjured DEFINITION INHERITING FROM lcl_item_controller.
+  PUBLIC SECTION.
+    METHODS: update REDEFINITION.
+ENDCLASS.
+
+CLASS lcl_item_controller_conjured IMPLEMENTATION.
+  METHOD update.
+    super->update( i_item ).
+    decrease_quality( ).
+    decrease_quality( ).
+    decrease_sellin( ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_item_controller_factory DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS:
+      get_controller IMPORTING i_item              TYPE REF TO lcl_item
+                     RETURNING VALUE(r_controller) TYPE REF TO lcl_item_controller.
+ENDCLASS.
+
+CLASS lcl_item_controller_factory IMPLEMENTATION.
+  METHOD get_controller.
+    CASE i_item->mv_name.
+      WHEN `Aged Brie`.
+        r_controller = NEW lcl_item_controller_agedbrie( ).
+
+      WHEN `Sulfuras, Hand of Ragnaros`.
+        r_controller = NEW lcl_item_controller_sulfuras( ).
+
+      WHEN `Backstage passes to a TAFKAL80ETC concert`.
+        r_controller = NEW lcl_item_controller_backstage( ).
+
+      WHEN `Conjured Mana Cake`.
+        r_controller = NEW lcl_item_controller_conjured( ).
+
+      WHEN OTHERS.
+        r_controller = NEW lcl_item_controller_normal( ).
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_gilded_rose DEFINITION FINAL.
+  PUBLIC SECTION.
+    TYPES:
+      tt_items TYPE STANDARD TABLE OF REF TO lcl_item WITH EMPTY KEY.
+    METHODS:
+      constructor
+        IMPORTING it_items TYPE tt_items,
+      update_quality.
+
+  PRIVATE SECTION.
+    DATA:
+      mt_items TYPE tt_items.
+ENDCLASS.
+
 CLASS lcl_gilded_rose IMPLEMENTATION.
   METHOD constructor.
     mt_items = it_items.
   ENDMETHOD.
 
   METHOD update_quality.
-    LOOP AT mt_items INTO DATA(lo_item).
-      IF lo_item->mv_name <> |Aged Brie| AND
-         lo_item->mv_name <> |Backstage passes to a TAFKAL80ETC concert|.
-        IF lo_item->mv_quality > 0.
-          IF lo_item->mv_name <> |Sulfuras, Hand of Ragnaros|.
-            lo_item->mv_quality = lo_item->mv_quality - 1.
-          ENDIF.
-          IF lo_item->mv_name = |Conjured Mana Cake|.
-            lo_item->mv_quality = lo_item->mv_quality - 1.
-          ENDIF.
-        ENDIF.
-      ELSE.
-        IF lo_item->mv_quality < 50.
-          lo_item->mv_quality = lo_item->mv_quality + 1.
-
-          IF lo_item->mv_name = |Backstage passes to a TAFKAL80ETC concert|.
-            IF lo_item->mv_sell_in < 11.
-              IF lo_item->mv_quality < 50.
-                lo_item->mv_quality = lo_item->mv_quality + 1.
-              ENDIF.
-            ENDIF.
-
-            IF lo_item->mv_sell_in < 6.
-              IF lo_item->mv_quality < 50.
-                lo_item->mv_quality = lo_item->mv_quality + 1.
-              ENDIF.
-            ENDIF.
-          ENDIF.
-        ENDIF.
-      ENDIF.
-
-      IF lo_item->mv_name <> |Sulfuras, Hand of Ragnaros|.
-        lo_item->mv_sell_in = lo_item->mv_sell_in - 1.
-      ENDIF.
-
-      IF lo_item->mv_sell_in < 0.
-        IF lo_item->mv_name <> |Aged Brie|.
-          IF lo_item->mv_name <> |Backstage passes to a TAFKAL80ETC concert|.
-            IF lo_item->mv_quality > 0.
-              IF lo_item->mv_name <> |Sulfuras, Hand of Ragnaros|.
-                lo_item->mv_quality = lo_item->mv_quality - 1.
-              ENDIF.
-            ENDIF.
-          ELSE.
-            lo_item->mv_quality = lo_item->mv_quality - lo_item->mv_quality.
-          ENDIF.
-        ELSE.
-          IF lo_item->mv_quality < 50.
-            lo_item->mv_quality = lo_item->mv_quality + 1.
-          ENDIF.
-        ENDIF.
-      ENDIF.
+    LOOP AT mt_items ASSIGNING FIELD-SYMBOL(<item>).
+      DATA(controller) = lcl_item_controller_factory=>get_controller( <item> ).
+      controller->update( <item> ).
     ENDLOOP.
   ENDMETHOD.
 ENDCLASS.
